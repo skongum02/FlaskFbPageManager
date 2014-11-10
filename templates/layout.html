@@ -6,6 +6,8 @@
 <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
 <script type=text/javascript src="{{
   url_for('static', filename='jquery.js') }}"></script>
+<script type=text/javascript src="{{
+  url_for('static', filename='index.js') }}"></script>
 </head>
 <body>
 <script>
@@ -69,6 +71,8 @@
 
   };
 
+
+
   // Load the SDK asynchronously
   (function(d, s, id) {
     var js, fjs = d.getElementsByTagName(s)[0];
@@ -78,50 +82,67 @@
     fjs.parentNode.insertBefore(js, fjs);
   }(document, 'script', 'facebook-jssdk'));
 
+
+
   // Here we run a very simple test of the Graph API after login is
   // successful.  See statusChangeCallback() for when this call is made.
   function UpdateLoginStatus() {
     console.log('Welcome!  Fetching your information.... ');
     FB.api('/me', function(response) {
       console.log('Successful login for: ' + response.name);
-      document.getElementById('status').innerHTML =
-        'Thanks for logging in, ' + response.name + '!';
+    
+      var message =  'Thanks for logging in, ' + response.name + '!';
+      if (response.error != null){
+        message = response.error.message
+      }
+    
+      document.getElementById('status').innerHTML = message
+    
     });
   }
-  
-  
+
+
   function GetPagesToManage() {
     $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
     console.log('Getting pages..');
     FB.api('/v2.2/me/accounts', function(response){
       var size = 0, key;
-      for (key in response.data){
-        if (response.data.hasOwnProperty(key)) size++;
+    
+      if (response.error != null){
+        document.getElementById('status').innerHTML = response.error.message
       }
-      
-      if (size > 0){
-        console.log('Succesfully in getting pages ' + response.data[0].id);
-        console.log('page token ' + response.data[0].access_token);
-        
-        document.getElementById('status').innerHTML += "<br>" + "Here are the pages that you can manage."
-  
-        $('#pageList').empty();
-        
-        var content = "<table>";
-        content += "<tr><th>Page Name</th></tr>";
-        for(i=0; i<size; i++){
-            content += '<tr><td><a href='+ $SCRIPT_ROOT + "/page/" + response.data[i].id + ">" + response.data[i].name + '</a></td> </tr>';
-        }
-        content += "</table>";
-
-        $('#pageList').append(content);
-      }
-      
       else{
-        console.log('No pages to manage')
+    
+    
+        for (key in response.data){
+          if (response.data.hasOwnProperty(key)) size++;
+        }
+    
+        if (size > 0){
+          console.log('Succesfully in getting pages ' + response.data[0].id);
+          console.log('page token ' + response.data[0].access_token);
+      
+          document.getElementById('status').innerHTML += "<br>" + "Here are the pages that you can manage."
+
+          $('#pageList').empty();
+      
+          var content = "<table>";
+          content += "<tr><th>Page Name</th></tr>";
+          for(i=0; i<size; i++){
+              content += '<tr><td><a href='+ $SCRIPT_ROOT + "/page/" + response.data[i].id + ">" + response.data[i].name + '</a></td> </tr>';
+          }
+          content += "</table>";
+
+          $('#pageList').append(content);
+        }
+    
+        else{
+          console.log('No pages to manage')
+        }
       }
     });
   }
+
   
 </script>
 

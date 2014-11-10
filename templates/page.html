@@ -55,7 +55,7 @@
     cookie     : true,  // enable cookies to allow the server to access 
                         // the session
     xfbml      : true,  // parse social plugins on this page
-    version    : 'v2.2' // use version 2.2
+    version    : FbVersion // use version 2.2
   });
 
   // Now that we've initialized the JavaScript SDK, we call 
@@ -93,27 +93,34 @@
     console.log(pageId);
     
     FB.api('/' + FbVersion + '/me/accounts', function(response){
-      var index = -1;
-      for (var i = 0; i < response.data.length; i++){
-        if (response.data[i].id == pageId) {
-          index = i;
-        }
-      }
       
-      if (index >= 0){
-        console.log('Succesfully in getting page ' + response.data[index].id);
-        console.log('page token ' + response.data[index].access_token);
-        
-        AccessToken = response.data[index].access_token
-        PageName = response.data[index].name
-        PageId = response.data[index].id
-        
-        document.getElementById('status').innerHTML += "<br>" + "Here are the posts for the " + response.data[index].name + " page";
-        
+      if (response.error != null){
+        document.getElementById('status_fb').innerHTML = response.error.message
       }
-      
       else{
-        console.log('No Accounts')
+      
+        var index = -1;
+        for (var i = 0; i < response.data.length; i++){
+          if (response.data[i].id == pageId) {
+            index = i;
+          }
+        }
+      
+        if (index >= 0){
+          console.log('Succesfully in getting page ' + response.data[index].id);
+          console.log('page token ' + response.data[index].access_token);
+        
+          AccessToken = response.data[index].access_token
+          PageName = response.data[index].name
+          PageId = response.data[index].id
+        
+          document.getElementById('status').innerHTML += "<br>" + "Here are the posts for the " + response.data[index].name + " page";
+        
+        }
+      
+        else{
+          console.log('No Accounts')
+        }
       }
     });
     
@@ -136,17 +143,23 @@
     console.log('/' + FbVersion + '/insights/post_impressions?' + queryString)
     FB.api('/' + FbVersion + '/insights/post_impressions?' + queryString, function(response){
       
-      var size = 0;
+      if (response.error != null){
+        document.getElementById('status_fb').innerHTML = response.error.message
+      }
+      else{
       
-      $.each(response, function(key, value) {
-        if (value != null && value.data != null && value.data.length == 1 && value.data[0].values != null && value.data[0].values.length == 1){
-          dict[key] = value.data[0].values[0].value;
-        }
-        else{
-          console.log("Post Insight did not get any valid data back")
-        }
-      });
       
+        var size = 0;
+      
+        $.each(response, function(key, value) {
+          if (value != null && value.data != null && value.data.length == 1 && value.data[0].values != null && value.data[0].values.length == 1){
+            dict[key] = value.data[0].values[0].value;
+          }
+          else{
+            console.log("Post Insight did not get any valid data back")
+          }
+        });
+      }
       
     });
     
@@ -159,45 +172,50 @@
     FB.api('/' + FbVersion + '/' + pageId + '/promotable_posts', function(response){
       var size = 0;
       
-      if(response.data != null){
-        size = response.data.length;
+      if (response.error != null){
+        document.getElementById('status_fb').innerHTML = response.error.message
       }
+      else{
       
-      if(size > 0){
-          $('#pageList').empty();
-          
-          var insights = GetPostInsights(response, size);
       
-          var content = "<table>";
-          content += "<tr><th>Posts</th><th>Create Date</th><th>Views</th></tr>";
-          for(i=0; i<size; i++){
-            message = response.data[i].message
-            if(message == undefined){
-              message = response.data[i].story
-            }
-            endFontColor = ''
-            fontColor = ''
-            if (!response.data[i].is_published){
-              fontColor = '<font color=\"#C8C8C8\">'
-              endFontColor = '</font>'
-            }
-              beginRow = '<tr><td>'
-              
-              impressionValue = insights[response.data[i].id]
-              
-              content +=  beginRow + fontColor + message + endFontColor + '</td><td>' + fontColor + response.data[i].created_time + endFontColor + ' </td><td>' + fontColor + impressionValue + endFontColor + '</td></tr>';
-          }
-          content += "</table>";
-
-          $('#pageList').append(content);
+        if(response.data != null){
+          size = response.data.length;
         }
       
-      else{
-        console.log('No posts');
-      }
+        if(size > 0){
+            $('#pageList').empty();
+          
+            var insights = GetPostInsights(response, size);
       
-    }
-  );
+            var content = "<table>";
+            content += "<tr><th>Posts</th><th>Create Date</th><th>Views</th></tr>";
+            for(i=0; i<size; i++){
+              message = response.data[i].message
+              if(message == undefined){
+                message = response.data[i].story
+              }
+              endFontColor = ''
+              fontColor = ''
+              if (!response.data[i].is_published){
+                fontColor = '<font color=\"#C8C8C8\">'
+                endFontColor = '</font>'
+              }
+                beginRow = '<tr><td>'
+              
+                impressionValue = insights[response.data[i].id]
+              
+                content +=  beginRow + fontColor + message + endFontColor + '</td><td>' + fontColor + response.data[i].created_time + endFontColor + ' </td><td>' + fontColor + impressionValue + endFontColor + '</td></tr>';
+            }
+            content += "</table>";
+
+            $('#pageList').append(content);
+          }
+      
+        else{
+          console.log('No posts');
+        }
+      }
+    });
   }
   
   
@@ -215,15 +233,19 @@
     } 
     
       FB.api('/' + FbVersion + '/'+ PageId + '/feed', "POST", postContent,function(response){
+        if (response.error != null){
+          document.getElementById('status_fb').innerHTML = response.error.message
+        }
         
       });
   }
   
 
   $(document).ready(function() {
-       
+    $.ajaxSetup({ cache: true });
     var commentDefaultValue = "Enter a post...";
-    document.getElementById("comment").value = commentDefaultValue;
+    //document.getElementById("comment").value = commentDefaultValue;
+    $("#comment").html(commentDefaultValue);
     $("#comment")
       .focus(function() {
             if (this.value === commentDefaultValue) {
@@ -243,12 +265,16 @@
 <div id="fb-root">
 </div>  
   
+<div id="status_fb">
+</div>
+  
 <form id="postFb" action="">
 <textarea name="comment" form="usrform" rows="8" cols="50" id="comment"></textarea>
 <br>
 <input type="submit" id="Post" value="Post" onclick="SubmitPost('post')"/>
 <input type="submit" id="Unpublished" value="Post Unpub" onclick="SubmitPost('unpub')"/>
 </form>
+
 
 
 

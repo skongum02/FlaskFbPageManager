@@ -46,7 +46,9 @@ def show_entries():
 def show_pages(page_id=None):
     return render_template('page.html')
 
-    
+@app.route('/page/<int:page_id>', methods=['POST'])
+def post_page(page_id=None):
+     return render_template('postPage.html')   
 
 if __name__ == '__main__':
     app.run()
