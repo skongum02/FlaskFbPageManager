@@ -40,7 +40,7 @@ def teardown_request(exception):
 
 @app.route('/')
 def show_entries():
-    return render_template('layout.html')
+    return render_template('login.html')
 
 @app.route('/page/<int:page_id>', methods=['GET'])
 def show_pages(page_id=None):
