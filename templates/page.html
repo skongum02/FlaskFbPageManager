@@ -4,7 +4,9 @@
 <title>Manage Page</title>
 <meta charset="UTF-8">
 <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
-<script type=text/javascript src="{{url_for('static', filename='jquery.js') }}"></script>
+<!--script type=text/javascript src="{{url_for('static', filename='jquery.js') }}"></script-->
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.0/jquery.min.js"></script>
+    
 </head>
 <body>
 <script>
@@ -12,6 +14,9 @@
   var PageId = 0;
   var AccessToken = 0;
   var PageName = 0;
+  
+  var FbVersion = 'v2.2';
+  
   // This is called with the results from from FB.getLoginStatus().
   function statusChangeCallback(response) {
     console.log('statusChangeCallback');
@@ -50,7 +55,7 @@
     cookie     : true,  // enable cookies to allow the server to access 
                         // the session
     xfbml      : true,  // parse social plugins on this page
-    version    : 'v2.1' // use version 2.1
+    version    : 'v2.2' // use version 2.2
   });
 
   // Now that we've initialized the JavaScript SDK, we call 
@@ -87,7 +92,7 @@
     var pageId = location.pathname.split("/")[2];
     console.log(pageId);
     
-    FB.api('/v2.2/me/accounts', function(response){
+    FB.api('/' + FbVersion + '/me/accounts', function(response){
       var index = -1;
       for (var i = 0; i < response.data.length; i++){
         if (response.data[i].id == pageId) {
@@ -103,7 +108,7 @@
         PageName = response.data[index].name
         PageId = response.data[index].id
         
-        document.getElementById('status').innerHTML += "<br>" + "Here are the posts that you have for the " + response.data[index].name + " page";
+        document.getElementById('status').innerHTML += "<br>" + "Here are the posts for the " + response.data[index].name + " page";
         
       }
       
@@ -118,9 +123,40 @@
   }
   
   
+  function GetPostInsights(data, size){
+    console.log("Insight")
+    var dict = {};
+    var queryString = "ids=";
+    for (var i = 0; i < size; i++){
+      dict[data.data[i].id] = 0;
+      queryString += data.data[i].id + ",";
+    }
+    
+    queryString = queryString.substr(0, queryString.length-1);
+    console.log('/' + FbVersion + '/insights/post_impressions?' + queryString)
+    FB.api('/' + FbVersion + '/insights/post_impressions?' + queryString, function(response){
+      
+      var size = 0;
+      
+      $.each(response, function(key, value) {
+        if (value != null && value.data != null && value.data.length == 1 && value.data[0].values != null && value.data[0].values.length == 1){
+          dict[key] = value.data[0].values[0].value;
+        }
+        else{
+          console.log("Post Insight did not get any valid data back")
+        }
+      });
+      
+      
+    });
+    
+    console.log(dict)
+    return dict
+    
+  }
+  
   function GeneratePostList(pageId, type){
-    console.log(pageId + ' here')
-    FB.api('/v2.2/' + pageId + '/promotable_posts', function(response){
+    FB.api('/' + FbVersion + '/' + pageId + '/promotable_posts', function(response){
       var size = 0;
       
       if(response.data != null){
@@ -129,6 +165,8 @@
       
       if(size > 0){
           $('#pageList').empty();
+          
+          var insights = GetPostInsights(response, size);
       
           var content = "<table>";
           content += "<tr><th>Posts</th><th>Create Date</th><th>Views</th></tr>";
@@ -140,13 +178,14 @@
             endFontColor = ''
             fontColor = ''
             if (!response.data[i].is_published){
-              console.log('unpub')
               fontColor = '<font color=\"#C8C8C8\">'
               endFontColor = '</font>'
             }
               beginRow = '<tr><td>'
               
-              content +=  beginRow + fontColor + message + endFontColor + '</td><td>' + fontColor + response.data[i].created_time + endFontColor + ' </td><td></td></tr>';
+              impressionValue = insights[response.data[i].id]
+              
+              content +=  beginRow + fontColor + message + endFontColor + '</td><td>' + fontColor + response.data[i].created_time + endFontColor + ' </td><td>' + fontColor + impressionValue + endFontColor + '</td></tr>';
           }
           content += "</table>";
 
@@ -163,7 +202,6 @@
   
   
   function SubmitPost(id){
-    //if(id=)
     var comments = document.getElementById("comment").value;
    
     var postContent = 
@@ -176,21 +214,37 @@
       postContent.published = false
     } 
     
-    console.log(postContent)
-    
-      FB.api('/v2.2/'+ PageId + '/feed', "POST", postContent,function(response){
+      FB.api('/' + FbVersion + '/'+ PageId + '/feed', "POST", postContent,function(response){
         
       });
-    //GeneratePostList(PageId, 'append');
   }
   
 
+  $(document).ready(function() {
+       
+    var commentDefaultValue = "Enter a post...";
+    document.getElementById("comment").value = commentDefaultValue;
+    $("#comment")
+      .focus(function() {
+            if (this.value === commentDefaultValue) {
+                this.value = '';
+            }
+      })
+      .blur(function() {
+            if (this.value === '') {
+                this.value = commentDefaultValue;
+            }
+    });
+  
+  });
   
 </script>
 
-
+<div id="fb-root">
+</div>  
+  
 <form id="postFb" action="">
-<textarea name="comment" form="usrform" rows="8" cols="50" id="comment">Hello, World!</textarea>
+<textarea name="comment" form="usrform" rows="8" cols="50" id="comment"></textarea>
 <br>
 <input type="submit" id="Post" value="Post" onclick="SubmitPost('post')"/>
 <input type="submit" id="Unpublished" value="Post Unpub" onclick="SubmitPost('unpub')"/>
