@@ -4,10 +4,10 @@
 <title>Facebook Page Manager</title>
 <meta charset="UTF-8">
 <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
-<script type=text/javascript src="{{
-  url_for('static', filename='jquery.js') }}"></script>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.0/jquery.min.js"></script>
 <script type=text/javascript src="{{
   url_for('static', filename='index.js') }}"></script>
+<script type=text/javascript src="{{url_for('static', filename='config.js') }}"></script>
 </head>
 <body>
 <script>
@@ -46,7 +46,7 @@
 
   window.fbAsyncInit = function() {
   FB.init({
-    appId      : 'APP ID',
+    appId      : APP_ID,
     cookie     : true,  // enable cookies to allow the server to access 
                         // the session
     xfbml      : true,  // parse social plugins on this page
