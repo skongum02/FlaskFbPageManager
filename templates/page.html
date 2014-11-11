@@ -11,7 +11,6 @@
 </head>
 <body>
 <script>
-
   var PageId = 0;
   var AccessToken = 0;
   var PageName = 0;
@@ -86,24 +85,26 @@
     fjs.parentNode.insertBefore(js, fjs);
   }(document, 'script', 'facebook-jssdk'));
 
- 
+  // Does the initial sequence to get the page token, page name.
   function ListPosts(){
-    $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
     console.log('Getting page info..');
+    //Parse the page id from the html querystring
     var pageId = location.pathname.split("/")[2];
     console.log(pageId);
     
     FB.api('/' + FbVersion + '/me/accounts', function(response){
       
-      if (response.error != null){
+      if (!response || response.error){
         document.getElementById('status_fb').innerHTML = response.error.message
       }
       else{
       
         var index = -1;
+        //Find the offset needed for the page id
         for (var i = 0; i < response.data.length; i++){
           if (response.data[i].id == pageId) {
             index = i;
+            break;
           }
         }
       
@@ -130,50 +131,90 @@
   
   }
   
+  //Used for callback
+  function GetFbInsights(queryString, data, callback){
+    FB.api('/' + FbVersion + '/insights/post_impressions?' + queryString, function(response){
+      callback(response, data);
+    });
+  }
   
-  function GetPostInsights(data, size){
+  //From the given posts, get the metrics for each post
+  function GetPostInsightsAndPrintTable(data, size){
     console.log("Insight")
-    var dict = {};
+    
     var queryString = "ids=";
+    
+    //Create the parameters needed for a multiple request
     for (var i = 0; i < size; i++){
-      dict[data.data[i].id] = 0;
       queryString += data.data[i].id + ",";
     }
     
+    //querystring.length-1, because removing that last comma
     queryString = queryString.substr(0, queryString.length-1);
-    console.log('/' + FbVersion + '/insights/post_impressions?' + queryString)
-    FB.api('/' + FbVersion + '/insights/post_impressions?' + queryString, function(response){
-      
-      if (response.error != null){
+    console.log('/' + FbVersion + '/insights/post_impressions?' + queryString);
+    
+    GetFbInsights(queryString, data, function(response, data){
+      var insightValues = {};
+      if (!response || response.error){
         document.getElementById('status_fb').innerHTML = response.error.message
       }
       else{
-      
-      
         var size = 0;
       
+        //For each key, value in response, put in the metric we want
+        //In this case it is post_impressions
         $.each(response, function(key, value) {
           if (value != null && value.data != null && value.data.length == 1 && value.data[0].values != null && value.data[0].values.length == 1){
-            dict[key] = value.data[0].values[0].value;
+            insightValues[key] = value.data[0].values[0].value;
           }
           else{
             console.log("Post Insight did not get any valid data back")
           }
         });
       }
+
+
+      console.log(insightValues);
       
+      //Need to empty because on refresh it will append to the existing table
+      $('#pageList').empty();
+      var content = "<table>";
+      content += "<tr><th>Posts</th><th>Create Date</th><th>Views</th></tr>";
+      for(i=0; i<data.data.length; i++){
+        message = data.data[i].message;
+        if(message == undefined){
+          message = data.data[i].story;
+        }
+        endFontColor = '';
+        fontColor = '';
+        //Color code our unpublished posts
+        if (!data.data[i].is_published){
+          fontColor = '<font color=\"#C8C8C8\">';
+          endFontColor = '</font>';
+        }
+          beginRow = '<tr><td>';
+        
+          console.log(data.data[i].id);
+          impressionValue = insightValues[data.data[i].id];
+        
+          content +=  beginRow + fontColor + message + endFontColor + '</td><td>' + fontColor + data.data[i].created_time + endFontColor + ' </td><td>' + fontColor + impressionValue + endFontColor + '</td></tr>';
+      }
+      content += "</table>";
+
+      $('#pageList').append(content);
     });
     
-    console.log(dict)
-    return dict
+    
     
   }
   
+  
+  //Updates the table to show all our posts
   function GeneratePostList(pageId, type){
     FB.api('/' + FbVersion + '/' + pageId + '/promotable_posts', function(response){
       var size = 0;
       
-      if (response.error != null){
+      if (!response || response.error){
         document.getElementById('status_fb').innerHTML = response.error.message
       }
       else{
@@ -184,32 +225,12 @@
         }
       
         if(size > 0){
-            $('#pageList').empty();
           
-            var insights = GetPostInsights(response, size);
-      
-            var content = "<table>";
-            content += "<tr><th>Posts</th><th>Create Date</th><th>Views</th></tr>";
-            for(i=0; i<size; i++){
-              message = response.data[i].message
-              if(message == undefined){
-                message = response.data[i].story
-              }
-              endFontColor = ''
-              fontColor = ''
-              if (!response.data[i].is_published){
-                fontColor = '<font color=\"#C8C8C8\">'
-                endFontColor = '</font>'
-              }
-                beginRow = '<tr><td>'
-              
-                impressionValue = insights[response.data[i].id]
-              
-                content +=  beginRow + fontColor + message + endFontColor + '</td><td>' + fontColor + response.data[i].created_time + endFontColor + ' </td><td>' + fontColor + impressionValue + endFontColor + '</td></tr>';
-            }
-            content += "</table>";
-
-            $('#pageList').append(content);
+          
+            
+            GetPostInsightsAndPrintTable(response, size);
+            
+            
           }
       
         else{
@@ -220,6 +241,8 @@
   }
   
   
+  
+  //Submit our post
   function SubmitPost(id){
     var comments = document.getElementById("comment").value;
    
@@ -260,7 +283,7 @@
     });
   
   });
-  
+
 </script>
 
 <div id="fb-root">
@@ -270,6 +293,11 @@
 </div>
   
 <form id="postFb" action="">
+<!--<input type="radio" id="postType" value="status">
+<input type="radio" id="postType" value="photos">
+<input type="radio" id="postType" value="link">
+<input type="radio" id="postType" value="offer">
+<input type="file"/>-->
 <textarea name="comment" form="usrform" rows="8" cols="50" id="comment"></textarea>
 <br>
 <input type="submit" id="Post" value="Post" onclick="SubmitPost('post')"/>

@@ -108,7 +108,7 @@
     FB.api('/v2.2/me/accounts', function(response){
       var size = 0, key;
     
-      if (response.error != null){
+      if (!response || response.error){
         document.getElementById('status').innerHTML = response.error.message
       }
       else{
