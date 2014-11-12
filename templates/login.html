@@ -8,9 +8,12 @@
 <script type=text/javascript src="{{
   url_for('static', filename='index.js') }}"></script>
 <script type=text/javascript src="{{url_for('static', filename='config.js') }}"></script>
+
 </head>
 <body>
+  <script type=text/javascript src="{{url_for('static', filename='page.js') }}"></script>
 <script>
+   
   // This is called with the results from from FB.getLoginStatus().
   function statusChangeCallback(response) {
     console.log('statusChangeCallback');
@@ -50,7 +53,7 @@
     cookie     : true,  // enable cookies to allow the server to access 
                         // the session
     xfbml      : true,  // parse social plugins on this page
-    version    : 'v2.2' // use version 2.2
+    version    : FbVersion // use version 2.2
   });
 
   // Now that we've initialized the JavaScript SDK, we call 
@@ -101,46 +104,41 @@
     });
   }
 
+  
 
   function GetPagesToManage() {
     $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
     console.log('Getting pages..');
     FB.api('/v2.2/me/accounts', function(response){
-      var size = 0, key;
-    
       if (!response || response.error){
-        document.getElementById('status').innerHTML = response.error.message
+        if (response){
+          document.getElementById('status_fb').innerHTML = response.error.message;
+        }
+        else{
+          document.getElementById('status_fb').innerHTML = "Got null Response from server";
+        }
       }
       else{
-    
-    
-        for (key in response.data){
-          if (response.data.hasOwnProperty(key)) size++;
-        }
-    
-        if (size > 0){
-          console.log('Succesfully in getting pages ' + response.data[0].id);
-          console.log('page token ' + response.data[0].access_token);
-      
-          document.getElementById('status').innerHTML += "<br>" + "Here are the pages that you can manage."
-
+        idNames = _handleFbAccounts(response);
+        if (idNames){
           $('#pageList').empty();
+        
+          document.getElementById('status').innerHTML += "<br>" + "Here are the pages that you can manage."
       
           var content = "<table>";
           content += "<tr><th>Page Name</th></tr>";
-          for(i=0; i<size; i++){
-              content += '<tr><td><a href='+ $SCRIPT_ROOT + "/page/" + response.data[i].id + ">" + response.data[i].name + '</a></td> </tr>';
+        
+          console.log(idNames);
+          for(i=0; i<idNames.length; i++){
+              content += '<tr><td><a href='+ $SCRIPT_ROOT + "/page/" + idNames[i].id + ">" + idNames[i].name + '</a></td> </tr>';
           }
+        
           content += "</table>";
-
           $('#pageList').append(content);
         }
-    
-        else{
-          console.log('No pages to manage')
-        }
-      }
+      }      
     });
+            
   }
 
   

@@ -7,16 +7,12 @@
 <!--script type=text/javascript src="{{url_for('static', filename='jquery.js') }}"></script-->
 <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.0/jquery.min.js"></script>
 <script type=text/javascript src="{{url_for('static', filename='config.js') }}"></script>
+
     
 </head>
 <body>
+<script type=text/javascript src="{{url_for('static', filename='page.js') }}"></script>
 <script>
-  var PageId = 0;
-  var AccessToken = 0;
-  var PageName = 0;
-  
-  var FbVersion = 'v2.2';
-  
   // This is called with the results from from FB.getLoginStatus().
   function statusChangeCallback(response) {
     console.log('statusChangeCallback');
@@ -84,7 +80,7 @@
     js.src = "//connect.facebook.net/en_US/sdk.js";
     fjs.parentNode.insertBefore(js, fjs);
   }(document, 'script', 'facebook-jssdk'));
-
+  
   // Does the initial sequence to get the page token, page name.
   function ListPosts(){
     console.log('Getting page info..');
@@ -93,36 +89,17 @@
     console.log(pageId);
     
     FB.api('/' + FbVersion + '/me/accounts', function(response){
-      
-      if (!response || response.error){
-        document.getElementById('status_fb').innerHTML = response.error.message
+      if (!response){
+        document.getElementById('status').innerHTML = "Response from facebook is null";
+      }
+      else if (response.error){
+        document.getElementById('status').innerHTML = response.error.message;
       }
       else{
-      
-        var index = -1;
-        //Find the offset needed for the page id
-        for (var i = 0; i < response.data.length; i++){
-          if (response.data[i].id == pageId) {
-            index = i;
-            break;
+          pageName = _getPageName(response, pageId);
+          if (pageName){
+            document.getElementById('status').innerHTML += "<br>" + "Here are the posts for the " + pageName+ " page";
           }
-        }
-      
-        if (index >= 0){
-          console.log('Succesfully in getting page ' + response.data[index].id);
-          console.log('page token ' + response.data[index].access_token);
-        
-          AccessToken = response.data[index].access_token
-          PageName = response.data[index].name
-          PageId = response.data[index].id
-        
-          document.getElementById('status').innerHTML += "<br>" + "Here are the posts for the " + response.data[index].name + " page";
-        
-        }
-      
-        else{
-          console.log('No Accounts')
-        }
       }
     });
     
@@ -134,15 +111,53 @@
   //Used for callback
   function GetFbInsights(queryString, data, callback){
     FB.api('/' + FbVersion + '/insights/post_impressions?' + queryString, function(response){
-      callback(response, data);
+      if (!response || !data){
+        document.getElementById('status_fb').innerHTML = "Response from facebook is null";
+      }
+      else if (response.error){
+        document.getElementById('status_fb').innerHTML = response.error.message;
+      }
+      else if (data.error){
+        document.getElementById('status_fb').innerHTML = data.error.message;
+      }
+      else{
+        var insightValues = callback(response, data);
+        console.log(insightValues);
+        if (insightValues.length > 0){
+              $('#pageList').empty();
+              var content = "<table>";
+              content += "<tr><th>Posts</th><th>Create Date</th><th>Views</th></tr>";
+              for(i=0; i<insightValues.length; i++){
+                endFontColor = '';
+                fontColor = '';
+                //Color code our unpublished posts
+                if (!insightValues[i].is_published){
+                  fontColor = '<font color=\"#C8C8C8\">';
+                  endFontColor = '</font>';
+                }
+                  beginRow = '<tr><td>';
+    
+                  console.log(insightValues[i].id);
+                  impressionValue = insightValues[i].post_impressions;
+    
+                  content +=  beginRow + fontColor + insightValues[i].message + endFontColor + '</td><td>' + fontColor + 
+                  insightValues[i].created_time + endFontColor + ' </td><td>' + fontColor + impressionValue 
+                  + endFontColor + '</td></tr>';
+              }
+              content += "</table>";
+              $('#pageList').append(content);
+        }
+      }
     });
   }
+  
   
   //From the given posts, get the metrics for each post
   function GetPostInsightsAndPrintTable(data, size){
     console.log("Insight")
     
     var queryString = "ids=";
+    
     
     //Create the parameters needed for a multiple request
     for (var i = 0; i < size; i++){
@@ -153,56 +168,9 @@
     queryString = queryString.substr(0, queryString.length-1);
     console.log('/' + FbVersion + '/insights/post_impressions?' + queryString);
     
-    GetFbInsights(queryString, data, function(response, data){
-      var insightValues = {};
-      if (!response || response.error){
-        document.getElementById('status_fb').innerHTML = response.error.message
-      }
-      else{
-        var size = 0;
-      
-        //For each key, value in response, put in the metric we want
-        //In this case it is post_impressions
-        $.each(response, function(key, value) {
-          if (value != null && value.data != null && value.data.length == 1 && value.data[0].values != null && value.data[0].values.length == 1){
-            insightValues[key] = value.data[0].values[0].value;
-          }
-          else{
-            console.log("Post Insight did not get any valid data back")
-          }
-        });
-      }
-
-
-      console.log(insightValues);
-      
-      //Need to empty because on refresh it will append to the existing table
-      $('#pageList').empty();
-      var content = "<table>";
-      content += "<tr><th>Posts</th><th>Create Date</th><th>Views</th></tr>";
-      for(i=0; i<data.data.length; i++){
-        message = data.data[i].message;
-        if(message == undefined){
-          message = data.data[i].story;
-        }
-        endFontColor = '';
-        fontColor = '';
-        //Color code our unpublished posts
-        if (!data.data[i].is_published){
-          fontColor = '<font color=\"#C8C8C8\">';
-          endFontColor = '</font>';
-        }
-          beginRow = '<tr><td>';
-        
-          console.log(data.data[i].id);
-          impressionValue = insightValues[data.data[i].id];
-        
-          content +=  beginRow + fontColor + message + endFontColor + '</td><td>' + fontColor + data.data[i].created_time + endFontColor + ' </td><td>' + fontColor + impressionValue + endFontColor + '</td></tr>';
-      }
-      content += "</table>";
-
-      $('#pageList').append(content);
-    });
+    var functionPointer = _listFbPosts
+    
+    GetFbInsights(queryString, data, _listFbPosts);
     
     
     
@@ -225,11 +193,7 @@
         }
       
         if(size > 0){
-          
-          
-            
             GetPostInsightsAndPrintTable(response, size);
-            
             
           }
       
@@ -257,7 +221,7 @@
     } 
     
       FB.api('/' + FbVersion + '/'+ PageId + '/feed', "POST", postContent,function(response){
-        if (response.error != null){
+        if (!response || response.error != null){
           document.getElementById('status_fb').innerHTML = response.error.message
         }
         
