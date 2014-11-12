@@ -62,19 +62,6 @@ describe("page", function() {
 
 
 
-describe("page", function() {
-    it("calls the _listFbPosts returns data", function() {
-      var data = []
-      counter = 0;
-      id = 123;
-      isPublished = true;
-      createdTime = 1;
-      data[counter] = {id: id, access_token: 0, name: pageName};
-      expected = [{id: id, name: pageName}];
-      dict = {}
-      dict[id] = 1
-      expect(_listFbPosts({data: data}, dict)).toEqual(expected);
-    });
-});
+
 
 

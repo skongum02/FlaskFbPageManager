@@ -4,6 +4,9 @@ var PageName = 0;
 
 var FbVersion = 'v2.2';
 
+
+//Returns the page name 
+//From the given pageId
 function _getPageName(response, pageId){
   var retVal = null;
   console.log(response)
@@ -40,7 +43,8 @@ function _getPageName(response, pageId){
 
 
 
-
+//Given a response which holds post_impressions and a list of posts, essentially do a join on the two datasets
+//Return the combined data
 function _listFbPosts(response, data){
   var retVal = [];
   if(response && data){
@@ -79,7 +83,7 @@ function _listFbPosts(response, data){
 
 
 
-
+//Get a list of pages that this user has access to
 function _handleFbAccounts(response){
   var size = 0, key;
   var retVal = null;
